@@ -8,6 +8,7 @@ import qtawesome as qta
 import os
 from pathlib import Path
 from gui.ui_styles import ButtonStyles, WidgetStyles
+from config.models import get_available_model_names, DEFAULT_PRIMARY_MODEL
 
 
 class SettingsDialog(QDialog):
@@ -114,7 +115,8 @@ class SettingsDialog(QDialog):
         translation_layout = QFormLayout(translation_group)
         
         self.default_model_combo = QComboBox()
-        self.default_model_combo.addItems(["gemini-2.0-flash", "gemini-2.0-flash-lite"])
+        self.default_model_combo.setEditable(True)
+        self.default_model_combo.addItems(get_available_model_names())
         self.default_model_combo.setStyleSheet(WidgetStyles.get_combo_box_style("primary"))
         translation_layout.addRow(QLabel("Default Model:"), self.default_model_combo)
         
@@ -159,19 +161,19 @@ class SettingsDialog(QDialog):
         # Temperature parameter (0.0 to 1.0)
         self.temperature_spin = QDoubleSpinBox()
         self.temperature_spin.setRange(0.0, 1.0)
-        self.temperature_spin.setValue(0.0)
+        self.temperature_spin.setValue(0.2)
         self.temperature_spin.setSingleStep(0.1)
         self.temperature_spin.setDecimals(2)
         self.temperature_spin.setStyleSheet(WidgetStyles.get_input_style("primary"))
         model_params_layout.addRow(QLabel("Temperature:"), self.temperature_spin)
-        temp_help = QLabel("Controls randomness: 0 is deterministic, 1 is most random")
+        temp_help = QLabel("Controls creativity: 0 is deterministic, 0.2-0.4 is smoother for prose")
         temp_help.setStyleSheet("color: #555; font-size: 12px;")
         model_params_layout.addRow("", temp_help)
         
         # Top-p parameter (0.0 to 1.0)
         self.top_p_spin = QDoubleSpinBox()
         self.top_p_spin.setRange(0.0, 1.0)
-        self.top_p_spin.setValue(0.95)
+        self.top_p_spin.setValue(0.90)
         self.top_p_spin.setSingleStep(0.05)
         self.top_p_spin.setDecimals(2)
         self.top_p_spin.setStyleSheet(WidgetStyles.get_input_style("primary"))
@@ -264,10 +266,12 @@ class SettingsDialog(QDialog):
         confirm_exit = self.settings.value("ConfirmExit", True, type=bool)
         self.confirm_exit_check.setChecked(confirm_exit)
         
-        default_model = self.settings.value("DefaultModel", "gemini-2.0-flash")
+        default_model = self.settings.value("DefaultModel", DEFAULT_PRIMARY_MODEL)
         index = self.default_model_combo.findText(default_model)
         if index >= 0:
             self.default_model_combo.setCurrentIndex(index)
+        else:
+            self.default_model_combo.setEditText(default_model)
         
         default_style = self.settings.value("DefaultStyle", 1, type=int)
         index = self.default_style_combo.findData(default_style)
@@ -281,10 +285,10 @@ class SettingsDialog(QDialog):
         self.timeout_spin.setValue(timeout)
         
         # Load Gemini model parameters
-        temperature = self.settings.value("ModelTemperature", 0.0, type=float)
+        temperature = self.settings.value("ModelTemperature", 0.2, type=float)
         self.temperature_spin.setValue(temperature)
         
-        top_p = self.settings.value("ModelTopP", 0.95, type=float)
+        top_p = self.settings.value("ModelTopP", 0.90, type=float)
         self.top_p_spin.setValue(top_p)
         
         top_k = self.settings.value("ModelTopK", 40, type=int)
@@ -305,7 +309,8 @@ class SettingsDialog(QDialog):
         self.settings.setValue("APIKey", self.api_key_edit.text())
         self.settings.setValue("Theme", self.theme_combo.currentText())
         self.settings.setValue("ConfirmExit", self.confirm_exit_check.isChecked())
-        self.settings.setValue("DefaultModel", self.default_model_combo.currentText())
+        default_model = self.default_model_combo.currentText().strip() or DEFAULT_PRIMARY_MODEL
+        self.settings.setValue("DefaultModel", default_model)
         self.settings.setValue("DefaultStyle", self.default_style_combo.currentData())
         self.settings.setValue("Threads", self.threads_spin.value())
         self.settings.setValue("Timeout", self.timeout_spin.value())
@@ -313,6 +318,7 @@ class SettingsDialog(QDialog):
         # Save output directory if set
         if hasattr(self, 'output_dir_edit') and self.output_dir_edit.text():
             self.settings.setValue("OutputDirectory", self.output_dir_edit.text())
+            self.settings.setValue("DefaultOutputDir", self.output_dir_edit.text())
         
         # Save history limit if set
         if hasattr(self, 'history_limit_spin'):
@@ -322,6 +328,7 @@ class SettingsDialog(QDialog):
         self.settings.setValue("ModelTemperature", self.temperature_spin.value())
         self.settings.setValue("ModelTopP", self.top_p_spin.value())
         self.settings.setValue("ModelTopK", self.top_k_spin.value())
+        self.settings.setValue("ModelSamplingCustomized", True)
         
         self.settings.sync()
         self.show_success("Settings Saved", "Your settings have been saved successfully.")

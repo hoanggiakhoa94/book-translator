@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from platformdirs import user_data_path
 
-from config.models import GEMINI_FLASH_THINKING_MODEL_CONFIG
+from config.models import get_book_info_model_config
 from text_processing.text_processing import sanitize_path_name
 from translator.manager import TranslationManager, PromptStyle
 
@@ -135,7 +135,7 @@ class BaseBookDownloader(ABC):
         self.end_chapter = end_chapter
         self.client = self._init_http_client()
         self.translator = TranslationManager(
-            model_config=GEMINI_FLASH_THINKING_MODEL_CONFIG,
+            model_config=get_book_info_model_config(),
         )
         self.state_manager = StateManager()
         self.book_dir: Optional[Path] = None # Will be set during initialization

@@ -1,5 +1,6 @@
 .idea/
 .venv/
+venv/
 books/
 data/
 __pycache__/
@@ -7,3 +8,25 @@ __pycache__/
 *.pyc
 *.cpython
 .DS_Store
+
+# Environments & secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Python tooling/cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Runtime outputs
+*.log
+logs/

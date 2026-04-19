@@ -12,6 +12,7 @@ from core.history_manager import HistoryManager
 from core.utils import QTextEditLogHandler
 from gui.ui_styles import WidgetStyles, ButtonStyles
 from gui.progress_dialog import EnhancedProgressDialog
+from config.models import get_available_model_names, DEFAULT_PRIMARY_MODEL
 import qtawesome as qta
 
 class FileTranslationDialog(QDialog):
@@ -140,7 +141,8 @@ class FileTranslationDialog(QDialog):
 
         # Model selection
         self.model_combo = QComboBox()
-        self.model_combo.addItems(["gemini-2.0-flash", "gemini-2.0-flash-lite"])
+        self.model_combo.setEditable(True)
+        self.model_combo.addItems(get_available_model_names())
         self.model_combo.setMinimumHeight(30)
         self.model_combo.setMinimumWidth(200)
         self.model_combo.setStyleSheet(WidgetStyles.get_combo_box_style("primary"))
@@ -442,6 +444,10 @@ class FileTranslationDialog(QDialog):
         if not self.title_edit.text().strip():
             self.show_error_message("Input Error", "Please enter a book title.")
             return False
+
+        if not self.model_combo.currentText().strip():
+            self.show_error_message("Input Error", "Please enter a Gemini model name.")
+            return False
             
         if self.chapter_range_btn.isChecked():
             start_chapter = self.start_spin.value()
@@ -472,6 +478,7 @@ class FileTranslationDialog(QDialog):
     def start_translation(self):
         if not self.validate_inputs():
             return
+        selected_model = self.model_combo.currentText().strip()
         start_chapter = self.start_spin.value() if self.chapter_range_btn.isChecked() else None
         end_chapter = self.end_spin.value() if self.chapter_range_btn.isChecked() else None
         params = {
@@ -480,7 +487,7 @@ class FileTranslationDialog(QDialog):
             'input_type': self.input_type,  # Add input_type parameter
             'book_title': self.title_edit.text().strip(),
             'author': self.author_edit.text().strip() or 'Unknown',
-            'model_name': self.model_combo.currentText(),
+            'model_name': selected_model,
             'prompt_style': self.style_combo.currentData(),
             'start_chapter': start_chapter,
             'end_chapter': end_chapter,
@@ -493,7 +500,7 @@ class FileTranslationDialog(QDialog):
             "input_type": self.input_type,  # Add input_type to history
             "book_title": self.title_edit.text().strip(),
             "author": self.author_edit.text().strip() or 'Unknown',
-            "model_name": self.model_combo.currentText(),
+            "model_name": selected_model,
             "prompt_style": self.style_combo.currentText(),
             "start_chapter": start_chapter,
             "end_chapter": end_chapter,
@@ -645,10 +652,12 @@ class FileTranslationDialog(QDialog):
         self.file_edit.setText(self.file_path)
         self.title_edit.setText(task.get("book_title", ""))
         self.author_edit.setText(task.get("author", ""))
-        model_name = task.get("model_name", "gemini-2.0-flash")
+        model_name = task.get("model_name", DEFAULT_PRIMARY_MODEL)
         index = self.model_combo.findText(model_name)
         if index >= 0:
             self.model_combo.setCurrentIndex(index)
+        else:
+            self.model_combo.setEditText(model_name)
         prompt_style = task.get("prompt_style", "Modern Style")
         index = self.style_combo.findText(prompt_style)
         if index >= 0:
@@ -676,10 +685,12 @@ class FileTranslationDialog(QDialog):
     def load_default_settings(self):
         """Load default settings from QSettings"""
         # Set default model
-        default_model = self.settings.value("DefaultModel", "gemini-2.0-flash")
+        default_model = self.settings.value("DefaultModel", DEFAULT_PRIMARY_MODEL)
         index = self.model_combo.findText(default_model)
         if index >= 0:
             self.model_combo.setCurrentIndex(index)
+        else:
+            self.model_combo.setEditText(default_model)
 
         # Set default style
         default_style = self.settings.value("DefaultStyle", 1, type=int)

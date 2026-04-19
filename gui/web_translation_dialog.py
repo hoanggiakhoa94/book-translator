@@ -14,6 +14,7 @@ from gui.ui_styles import ButtonStyles, WidgetStyles
 from gui.progress_dialog import EnhancedProgressDialog
 from gui.source_info_dialog import SourceInfoDialog
 from downloader.factory import DownloaderFactory
+from config.models import get_available_model_names, DEFAULT_PRIMARY_MODEL
 import qtawesome as qta
 from PyQt5.QtCore import QSettings
 
@@ -97,9 +98,10 @@ class WebTranslationDialog(QDialog):
         url_layout.addWidget(self.source_info_btn)
         form_layout.addRow(QLabel("Book URL:"), url_layout)
 
-        # Model selection (unchanged)
+        # Model selection
         self.model_combo = QComboBox()
-        self.model_combo.addItems(["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash-thinking", "gemini-1.5-pro"])
+        self.model_combo.setEditable(True)
+        self.model_combo.addItems(get_available_model_names())
         self.model_combo.setMinimumHeight(30)
         self.model_combo.setMinimumWidth(200)
         self.model_combo.setStyleSheet(WidgetStyles.get_combo_box_style("primary"))
@@ -334,6 +336,9 @@ class WebTranslationDialog(QDialog):
                 self.show_error_message("Validation Error",
                                         "Start chapter cannot be greater than end chapter.")
                 return False
+        if not self.model_combo.currentText().strip():
+            self.show_error_message("Validation Error", "Please enter a Gemini model name.")
+            return False
         return True
 
     def show_error_message(self, title, message):
@@ -547,6 +552,7 @@ class WebTranslationDialog(QDialog):
     def start_translation(self):
         if not self.validate_inputs():
             return
+        selected_model = self.model_combo.currentText().strip()
 
         # If there's already a thread running, stop it
         if self.thread and self.thread.isRunning():
@@ -558,7 +564,7 @@ class WebTranslationDialog(QDialog):
         params = {
             'task_type': 'web',
             'book_url': self.url_edit.text(),
-            'model_name': self.model_combo.currentText(),
+            'model_name': selected_model,
             'prompt_style': self.style_combo.currentData(),
             'start_chapter': start_chapter,
             'end_chapter': end_chapter,
@@ -569,7 +575,7 @@ class WebTranslationDialog(QDialog):
             "timestamp": datetime.datetime.now().isoformat(),
             "task_type": "web",
             "book_url": self.url_edit.text(),
-            "model_name": self.model_combo.currentText(),
+            "model_name": selected_model,
             "prompt_style": self.style_combo.currentText(),
             "start_chapter": start_chapter,
             "end_chapter": end_chapter,
@@ -647,10 +653,12 @@ class WebTranslationDialog(QDialog):
 
         # Set form fields
         self.url_edit.setText(task.get("book_url", ""))
-        model_name = task.get("model_name", "gemini-2.0-flash")
+        model_name = task.get("model_name", DEFAULT_PRIMARY_MODEL)
         index = self.model_combo.findText(model_name)
         if index >= 0:
             self.model_combo.setCurrentIndex(index)
+        else:
+            self.model_combo.setEditText(model_name)
         prompt_style = task.get("prompt_style", "Modern Style")
         index = self.style_combo.findText(prompt_style)
         if index >= 0:
@@ -725,10 +733,12 @@ class WebTranslationDialog(QDialog):
     def load_default_settings(self):
         """Load default settings from QSettings"""
         # Set default model
-        default_model = self.settings.value("DefaultModel", "gemini-2.0-flash")
+        default_model = self.settings.value("DefaultModel", DEFAULT_PRIMARY_MODEL)
         index = self.model_combo.findText(default_model)
         if index >= 0:
             self.model_combo.setCurrentIndex(index)
+        else:
+            self.model_combo.setEditText(default_model)
 
         # Set default style
         default_style = self.settings.value("DefaultStyle", 1, type=int)

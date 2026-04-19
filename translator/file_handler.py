@@ -205,11 +205,11 @@ class FileHandler:
             from concurrent.futures import ThreadPoolExecutor, as_completed
             from text_processing.text_processing import split_text_into_chunks
             import json
-            from config.models import GEMINI_FLASH_LITE_MODEL_CONFIG
+            from config.models import get_lightweight_model_config
             from config.prompts import PromptStyle
 
             translator = TranslationManager(
-                model_config=GEMINI_FLASH_LITE_MODEL_CONFIG,
+                model_config=get_lightweight_model_config(),
                 file_handler=self
             )
 
