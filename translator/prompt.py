@@ -1,44 +1,86 @@
-from typing import Optional
+import json
+import re
+from typing import Optional, Tuple
 
 from config import prompts
 from config.prompts import PromptStyle
 
 
 class PromptBuilder:
-    """Handles building translation prompts"""
+    """Builds translation prompts from templates."""
 
-    STYLE_REFINEMENT_GUIDELINES = """
-**BỔ SUNG CHẤT VĂN:**
-- Không dịch bám chữ từng từ. Ưu tiên giữ ý, nhịp và cảm xúc của câu.
-- Tái cấu trúc câu linh hoạt theo văn phong tiếng Việt tự nhiên; tránh câu cứng hoặc lặp mô-típ.
-- Giữ nhất quán giọng điệu nhân vật trong cùng ngữ cảnh, đặc biệt ở hội thoại dài.
-- Chọn từ gợi hình, giàu sắc thái nhưng không phô trương; tránh sáo ngữ hoặc dịch máy.
-- Duy trì mạch đọc trơn tru giữa các câu liên tiếp như một đoạn văn đã biên tập.
-""".strip()
+    @staticmethod
+    def _extract_context(additional_info: Optional[str]) -> Tuple[str, str]:
+        """Extract glossary and previous context from optional metadata text."""
+        if not additional_info:
+            return "", ""
+
+        data = additional_info.strip()
+        glossary = ""
+        previous_context = ""
+
+        glossary_match = re.search(r"\[GLOSSARY\](.*?)\[/GLOSSARY\]", data, re.DOTALL)
+        context_match = re.search(r"\[PREVIOUS_CONTEXT\](.*?)\[/PREVIOUS_CONTEXT\]", data, re.DOTALL)
+
+        if glossary_match or context_match:
+            if glossary_match:
+                glossary = glossary_match.group(1).strip()
+            if context_match:
+                previous_context = context_match.group(1).strip()
+            return glossary, previous_context
+
+        # Backward-compatible default: treat free-form info as glossary.
+        return data, ""
+
+    @staticmethod
+    def _format_sentences_list(text: str) -> str:
+        """Format sentence list payload for SENTENCES_PROMPT."""
+        raw = text.strip()
+        if not raw:
+            return "[]"
+
+        if raw.startswith("[") and raw.endswith("]"):
+            return raw
+
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not lines:
+            return "[]"
+
+        return json.dumps(lines, ensure_ascii=False, indent=2)
 
     @staticmethod
     def build_translation_prompt(
-            text: str,
-            additional_info: Optional[str],
-            prompt_style: PromptStyle
+        text: str,
+        additional_info: Optional[str],
+        prompt_style: PromptStyle,
     ) -> str:
         """Build prompt based on selected style."""
-        base_prompt = {
+        style = PromptStyle(prompt_style)
+        template = {
             PromptStyle.Modern: prompts.MODERN_PROMPT,
             PromptStyle.ChinaFantasy: prompts.CHINA_FANTASY_PROMPT,
             PromptStyle.BookInfo: prompts.BOOK_INFO_PROMPT,
             PromptStyle.Sentences: prompts.SENTENCES_PROMPT,
             PromptStyle.IncompleteHandle: prompts.INCOMPLETE_HANDLE_PROMPT,
-        }[PromptStyle(prompt_style)]
+        }[style]
 
-        if PromptStyle(prompt_style) in {
-            PromptStyle.Modern,
-            PromptStyle.ChinaFantasy,
-            PromptStyle.IncompleteHandle,
-        }:
-            base_prompt = f"{base_prompt}\n\n{PromptBuilder.STYLE_REFINEMENT_GUIDELINES}"
+        source_text = text.strip()
+        glossary, previous_context = PromptBuilder._extract_context(additional_info)
+        sentences_list = PromptBuilder._format_sentences_list(source_text)
 
-        text = f"[**NỘI DUNG ĐOẠN VĂN**]\n{text.strip()}\n[**NỘI DUNG ĐOẠN VĂN**]"
-        if additional_info:
-            return f"{base_prompt}\n{text}\n{base_prompt}\n\n{additional_info}".strip()
-        return f"{base_prompt}\n{text}\n{base_prompt}".strip()
+        result = template
+        replacements = {
+            "{source_text}": source_text,
+            "{sentences_list}": sentences_list,
+            "{glossary}": glossary,
+            "{previous_context}": previous_context,
+        }
+        for token, value in replacements.items():
+            result = result.replace(token, value)
+
+        # If prompt template has no placeholders but caller still passes metadata,
+        # keep backward compatibility by appending metadata to the end.
+        if additional_info and "{glossary}" not in template and "{previous_context}" not in template:
+            result = f"{result}\n\n{additional_info.strip()}"
+
+        return result.strip()

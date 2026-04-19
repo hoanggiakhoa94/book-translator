@@ -1,98 +1,104 @@
 # Book Translator
 
-Ứng dụng dịch truyện (web/file) sang tiếng Việt bằng Gemini, hỗ trợ tạo EPUB và theo dõi tiến độ dịch theo chương.
+Ứng dụng dịch truyện Trung -> Việt bằng Gemini, hỗ trợ dịch từ web/file, lưu tiến độ theo chương và xuất EPUB.
 
-## Tính năng chính
-- Dịch từ URL truyện hoặc từ file/folder `.txt`.
-- Tạo EPUB sau khi dịch xong.
-- Cho phép chọn model Gemini trực tiếp trong UI.
-- Hỗ trợ model mới (mặc định ưu tiên dòng Gemini 2.5).
-- Tự động retry bằng model chất lượng cao khi cần.
-- Lưu lịch sử tác vụ và theo dõi tiến độ theo chương.
+## 1) Tính năng nổi bật
+- Dịch truyện từ URL hoặc file/folder `.txt`.
+- Chọn model Gemini trực tiếp trên giao diện.
+- Hỗ trợ model Gemini mới: có thể gõ tay model bất kỳ trong ô chọn model.
+- Tự động retry với model chất lượng cao khi cần.
+- Hỗ trợ nhiều prompt style, giữ ngữ cảnh dịch bằng placeholder:
+  - `{source_text}`
+  - `{glossary}`
+  - `{previous_context}`
+  - `{sentences_list}`
+- Xuất EPUB và theo dõi tiến độ/lịch sử dịch.
 
-## Yêu cầu môi trường
-- Python 3.10+ (khuyến nghị).
-- `pip`.
-- API key Gemini (Google AI Studio).
+## 2) Yêu cầu
+- Python 3.10+
+- `pip`
+- Gemini API key (tạo tại Google AI Studio)
 
-## Cài đặt nhanh
+## 3) Cài đặt nhanh
 ```bash
 git clone https://github.com/hoanggiakhoa94/book-translator.git
 cd book-translator
 
 python3 -m venv .venv
-source .venv/bin/activate   # macOS/Linux
-# .venv\Scripts\activate    # Windows (cmd)
-# .venv\Scripts\Activate.ps1 # Windows (PowerShell)
-
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Cấu hình API key
-Ứng dụng đọc key từ biến môi trường `GEMINI_API_KEY` hoặc bạn có thể nhập trong màn hình Settings.
+## 4) Cấu hình API key
+Ứng dụng đọc key theo thứ tự:
+1. Biến môi trường `GEMINI_API_KEY`
+2. Key đã lưu trong Settings của app
 
+Ví dụ:
 ```bash
 export GEMINI_API_KEY="your_key_here"
 ```
 
-Lưu ý bảo mật:
-- Không hardcode key trong code.
-- Không commit file chứa key lên git.
-
-## Chạy ứng dụng
+## 5) Chạy ứng dụng
 ### GUI
 ```bash
-python __main__.py
+./.venv/bin/python __main__.py
 ```
 
 ### CLI (tuỳ chọn)
 ```bash
-python cli.py \
+./.venv/bin/python cli.py \
   --book_url "<url>" \
   --model-name "gemini-2.5-flash" \
   --prompt_style 1 \
   --output_directory "<thu_muc_output>"
 ```
 
-## Model Gemini
-- Mặc định: `gemini-2.5-flash`.
-- Retry chất lượng cao: `gemini-2.5-pro`.
-- Bạn có thể gõ thủ công model mới trong dropdown nếu Google phát hành model mới.
+## 6) Dùng model Gemini mới hơn
+- Trong màn hình dịch, ô model là `editable`.
+- Bạn có thể nhập trực tiếp model mới (ví dụ dòng `gemini-2.5-*`) mà không cần sửa code.
+- Nếu model retry không khả dụng, hệ thống sẽ fallback về model chính để không dừng job.
 
-## Cấu trúc thư mục chính
-- `gui/`: giao diện PyQt5.
-- `translator/`: logic dịch và quản lý model/prompt.
-- `downloader/`: tải chương từ các nguồn web.
-- `epub/`: sinh file EPUB.
-- `config/`: cấu hình model/prompt/settings.
-
-## Hướng dẫn Git/GitHub (dễ hiểu)
-### 1) Đồng bộ mã mới nhất
+## 7) Hướng dẫn Git/GitHub dễ hiểu
+### Quy trình chuẩn mỗi lần làm việc
 ```bash
 git pull
-```
-
-### 2) Tạo branch làm việc
-```bash
 git checkout -b feature/ten-tinh-nang
-```
-
-### 3) Commit thay đổi
-```bash
+# code...
 git add .
-git commit -m "feat: mo ta ngan gon thay doi"
-```
-
-### 4) Push branch lên GitHub
-```bash
+git commit -m "feat: mo ta thay doi"
 git push -u origin feature/ten-tinh-nang
 ```
 
-### 5) Mở Pull Request
-- Lên GitHub repo, chọn branch vừa push, tạo Pull Request.
-- Mô tả rõ: mục tiêu, thay đổi chính, cách test.
+### Đẩy thẳng lên nhánh chính (khi làm repo cá nhân)
+```bash
+git add .
+git commit -m "chore: update project"
+git push origin main
+```
 
-## Troubleshooting nhanh
-- Lỗi thiếu package: chạy lại `pip install -r requirements.txt` trong `.venv`.
+### Trước khi push, luôn kiểm tra nhanh bảo mật
+```bash
+rg -n "AIza|GEMINI_API_KEY|API_KEY|SECRET|token"
+```
+Nếu thấy key thật, xoá ngay khỏi code rồi mới commit.
+
+## 8) `.gitignore` đã chặn file thừa
+Đã bỏ qua sẵn:
+- `.venv/`, `venv/`
+- `__pycache__/`, `*.pyc`
+- `.env`, `.env.*`
+- `.DS_Store`
+- cache/build/log phổ biến
+
+## 9) Cấu trúc thư mục chính
+- `gui/`: giao diện PyQt5
+- `translator/`: logic dịch, prompt, model manager
+- `config/`: cấu hình model/prompt/settings
+- `downloader/`: tải nội dung từ nguồn web
+- `epub/`: xuất EPUB
+
+## 10) Troubleshooting nhanh
+- Thiếu thư viện: chạy lại `pip install -r requirements.txt` trong `.venv`.
 - Lỗi API key: kiểm tra `GEMINI_API_KEY` hoặc nhập lại trong Settings.
-- App báo lỗi font trên macOS: cảnh báo này không chặn chạy app.
+- Cảnh báo font trên macOS: thường không chặn app chạy.
